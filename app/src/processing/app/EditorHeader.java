@@ -259,8 +259,13 @@ public class EditorHeader extends JComponent {
     if (Toolkit.highResDisplay()) {
       // scale everything 2x, will be scaled down when drawn to the screen
       g2.scale(2, 2);
+      if (Base.isUsableOracleJava()) {
+        // Oracle Java looks better with anti-aliasing turned on
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+      }
     } else {
-      // don't anti-alias text in retina mode
+      // don't anti-alias text in retina mode w/ Apple Java
       g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                           RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
     }
@@ -529,16 +534,14 @@ public class EditorHeader extends JComponent {
     item.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
           Sketch sketch = editor.getSketch();
-          if (!sketch.isUntitled()) {  // don't bother if untitled
-            if (!Base.isMacOS() &&  // ok on OS X
-                editor.base.editors.size() == 1 &&  // mmm! accessor
-                sketch.getCurrentCodeIndex() == 0) {
+          if (!Base.isMacOS() &&  // ok on OS X
+              editor.base.editors.size() == 1 &&  // mmm! accessor
+              sketch.getCurrentCodeIndex() == 0) {
               Base.showWarning("Yeah, no." ,
                                "You can't delete the last tab " +
                                "of the last open sketch.", null);
-            } else {
-              editor.getSketch().handleDeleteCode();
-            }
+          } else {
+            editor.getSketch().handleDeleteCode();
           }
         }
       });

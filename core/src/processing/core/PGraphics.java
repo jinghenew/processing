@@ -473,6 +473,11 @@ public class PGraphics extends PImage implements PConstants {
   protected float backgroundR, backgroundG, backgroundB, backgroundA;
   protected int backgroundRi, backgroundGi, backgroundBi, backgroundAi;
 
+
+  /** The current blending mode. */
+  protected int blendMode;
+
+
   // ........................................................
 
   /**
@@ -944,6 +949,8 @@ public class PGraphics extends PImage implements PConstants {
       background(backgroundColor);
     }
 
+    blendMode(BLEND);
+
     settingsInited = true;
     // defaultSettings() overlaps reapplySettings(), don't do both
     //reapplySettings = false;
@@ -961,11 +968,10 @@ public class PGraphics extends PImage implements PConstants {
    * called before defaultSettings(), so we should be safe.
    */
   protected void reapplySettings() {
-//    System.out.println("attempting reapplySettings()");
+    // This might be called by allocate... So if beginDraw() has never run,
+    // we don't want to reapply here, we actually just need to let
+    // defaultSettings() get called a little from inside beginDraw().
     if (!settingsInited) return;  // if this is the initial setup, no need to reapply
-
-//    System.out.println("  doing reapplySettings");
-//    new Exception().printStackTrace(System.out);
 
     colorMode(colorMode, colorModeX, colorModeY, colorModeZ);
     if (fill) {
@@ -1012,6 +1018,8 @@ public class PGraphics extends PImage implements PConstants {
     textMode(textMode);
     textAlign(textAlign, textAlignY);
     background(backgroundColor);
+
+    blendMode(blendMode);
 
     reapplySettings = false;
   }
@@ -1216,6 +1224,9 @@ public class PGraphics extends PImage implements PConstants {
    * @see PGraphics#textureWrap(int)
    */
   public void textureMode(int mode) {
+    if (mode != IMAGE && mode != NORMAL) {
+      throw new RuntimeException("textureMode() only supports IMAGE and NORMAL");
+    }
     this.textureMode = mode;
   }
 
@@ -1827,7 +1838,15 @@ public class PGraphics extends PImage implements PConstants {
    * @param mode the blending mode to use
    */
   public void blendMode(int mode) {
-    showMissingWarning("blendMode");
+    this.blendMode = mode;
+    blendModeImpl();
+  }
+
+
+  protected void blendModeImpl() {
+    if (blendMode != BLEND) {
+      showMissingWarning("blendMode");
+    }
   }
 
 
@@ -5798,6 +5817,8 @@ public class PGraphics extends PImage implements PConstants {
     ellipseMode(s.ellipseMode);
     shapeMode(s.shapeMode);
 
+    blendMode(s.blendMode);
+
     if (s.tint) {
       tint(s.tintColor);
     } else {
@@ -5875,6 +5896,8 @@ public class PGraphics extends PImage implements PConstants {
     s.rectMode = rectMode;
     s.ellipseMode = ellipseMode;
     s.shapeMode = shapeMode;
+
+    s.blendMode = blendMode;
 
     s.colorMode = colorMode;
     s.colorModeX = colorModeX;
@@ -6012,7 +6035,9 @@ public class PGraphics extends PImage implements PConstants {
    * ( end auto-generated )
    *
    * @webref color:setting
-   * @see PGraphics#stroke(float, float, float, float)
+   * @see PGraphics#stroke(int, float)
+   * @see PGraphics#fill(float, float, float, float)
+   * @see PGraphics#noFill()
    */
   public void noStroke() {
     stroke = false;
@@ -6043,7 +6068,9 @@ public class PGraphics extends PImage implements PConstants {
    *
    * @param rgb color value in hexadecimal notation
    * @see PGraphics#noStroke()
+   * @see PGraphics#strokeWeight(float)
    * @see PGraphics#fill(int, float)
+   * @see PGraphics#noFill()
    * @see PGraphics#tint(int, float)
    * @see PGraphics#background(float, float, float, float)
    * @see PGraphics#colorMode(int, float, float, float, float)
@@ -6247,6 +6274,8 @@ public class PGraphics extends PImage implements PConstants {
    * @webref color:setting
    * @usage web_application
    * @see PGraphics#fill(float, float, float, float)
+   * @see PGraphics#stroke(int, float)
+   * @see PGraphics#noStroke()
    */
   public void noFill() {
     fill = false;
@@ -6283,6 +6312,7 @@ public class PGraphics extends PImage implements PConstants {
    * @param rgb color variable or hex value
    * @see PGraphics#noFill()
    * @see PGraphics#stroke(int, float)
+   * @see PGraphics#noStroke()
    * @see PGraphics#tint(int, float)
    * @see PGraphics#background(float, float, float, float)
    * @see PGraphics#colorMode(int, float, float, float, float)
@@ -7619,6 +7649,9 @@ public class PGraphics extends PImage implements PConstants {
    * individual color components of a color supplied as an int value.
    */
   static public int lerpColor(int c1, int c2, float amt, int mode) {
+    if (amt < 0) amt = 0;
+    if (amt > 1) amt = 1;
+
     if (mode == RGB) {
       float a1 = ((c1 >> 24) & 0xff);
       float r1 = (c1 >> 16) & 0xff;
